@@ -17,23 +17,26 @@ let params = {
   trailSpeed: 10,
   trailLength: maxTrailLength,
   mirror: true,
-  bgColor: "#000000", // dark gray
   rotateX: -0.1, 
   rotateY: 0.9,
-  rotateZ: 0
+  rotateZ: 0, 
+  zoom: 1.4
 };
 
 class polylineWithVisibleData {
+
+
   constructor(){
     this.points = [];
     this.visible = [];
+    this.maxLength = 100;
   }
   addPoint(x, y, visible){
     this.points.push(createVector(x, y, 0));
     this.visible.push(visible);
 
     // if we have more than maxTrailLength points, remove the first one
-    if (this.points.length > maxTrailLength){
+    while (this.points.length > this.maxLength){
       this.points.shift();
       this.visible.shift();
     }
@@ -63,7 +66,7 @@ class polylineWithVisibleData {
       // set line width 
       strokeWeight(params.lineThickness);
 
-      for (let i = (maxTrailLength-params.trailLength); i < this.points.length - 1; i++){
+      for (let i = 0; i < this.points.length - 1; i++){
         // calculate the alpha value based on pct through the line
         let pct = i / this.points.length;
         let alpha = 255 * (1 - pct);
@@ -141,6 +144,12 @@ class fingerPoints {
     }
   }
 
+  setMaxTrailLength(maxLength){ 
+    for (let i = 0; i < 6; i++){
+      this.fingers[i].polyline.maxLength = maxLength;
+    }
+  } 
+
   
   updateTarget( fingerIndex, x, y){
     this.fingers[fingerIndex].updateTarget(x, y);
@@ -189,7 +198,7 @@ function setup() {
   // trailSpeed: 250,
   // trailLength: 50,
   // mirror: true,
-  // bgColor: "#000000", // dark gray
+
 
   let gui = new dat.GUI();
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
@@ -198,12 +207,13 @@ function setup() {
   gui.add(params, "trailSpeed").min(1).max(100).step(1);
   gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
   gui.add(params, "mirror");
-  gui.addColor(params, "bgColor");
+
   gui.add(params, "rotateX").min(0).max(PI).step(0.001);
   gui.add(params, "rotateY").min(0).max(PI).step(0.001);
   gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
+  gui.add(params, "zoom").min(0.1).max(2).step(0.001);
 
-  frameRate(25);
+  //(25);
 
   createCanvas(640*2, 480*2, WEBGL);
   // Create the webcam video and hide it
@@ -230,7 +240,7 @@ function setup() {
 
   handpose.detectStart(video, gotHands);
   
-  console.log(handpose);
+  //console.log(handpose);
 
   leftFingers.setup();
   rightFingers.setup();
@@ -248,6 +258,9 @@ function draw() {
   // assume we have not seen the fingers 
   leftFingers.increaseFramesSinceSeen();
   rightFingers.increaseFramesSinceSeen();
+
+  leftFingers.setMaxTrailLength(params.trailLength);
+  rightFingers.setMaxTrailLength(params.trailLength);
 
   
   for (i = 0; i < hands.length; i++){
@@ -270,11 +283,12 @@ function draw() {
 
   // print framerate to the canvas
 
-  push();
-  clear();
-  background(params.bgColor);
+ 
+  //clear();
+  background(0);
 
-  scale(1.4, 1.4, 1.4);
+  push();
+  scale(params.zoom, params.zoom, params.zoom);
 
 
   rotateX(params.rotateX);
@@ -334,10 +348,16 @@ function draw() {
   image(textScreen, 0 - width/2,0 - height/2) 
 }
 
+
+function sleep(ms) {
+  clearInterval(sleepSetTimeout_ctrl);
+  return new Promise(resolve => sleepSetTimeout_ctrl = setTimeout(resolve, ms));
+}
 // Callback function for when handpose outputs data
 function gotHands(results) {
   // save the output to the hands variable
   hands = results;
 
+  //await new Promise(r => setTimeout(r, 200));
   //console.log(hands);
 }
