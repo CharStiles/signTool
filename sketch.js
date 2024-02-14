@@ -12,6 +12,7 @@ let maxTrailLength = 100;
 // JS Object
 let params = {
   easing: 0.3,
+  lineThickness: 3,
   camOpacity: 150,
   trailSpeed: 10,
   trailLength: maxTrailLength,
@@ -60,7 +61,7 @@ class polylineWithVisibleData {
 
 
       // set line width 
-      strokeWeight(3);
+      strokeWeight(params.lineThickness);
 
       for (let i = (maxTrailLength-params.trailLength); i < this.points.length - 1; i++){
         // calculate the alpha value based on pct through the line
@@ -192,14 +193,15 @@ function setup() {
 
   let gui = new dat.GUI();
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
+  gui.add(params, "lineThickness").min(0.1).max(4.0).step(0.01);
   gui.add(params, "camOpacity").min(0).max(255).step(1);
   gui.add(params, "trailSpeed").min(1).max(100).step(1);
   gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
   gui.add(params, "mirror");
   gui.addColor(params, "bgColor");
-  gui.add(params, "rotateX").min(-PI).max(PI).step(0.001);
-  gui.add(params, "rotateY").min(-PI).max(PI).step(0.001);
-  gui.add(params, "rotateZ").min(-PI).max(PI).step(0.001);
+  gui.add(params, "rotateX").min(0).max(PI).step(0.001);
+  gui.add(params, "rotateY").min(0).max(PI).step(0.001);
+  gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
 
   frameRate(25);
 
@@ -236,7 +238,7 @@ function setup() {
   // load a system font
  
   textScreen = createGraphics(400,400)
-  ortho();
+  ortho(-width/2, width/2, -height/2, height/2, 0.1, 10000);
 
 }
 
