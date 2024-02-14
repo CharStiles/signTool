@@ -4,12 +4,22 @@ let video;
 let hands = [];
 let lineLen = 150;
 let lines = {};
-let easing = 0.3;
 let d = 200;
 let handPointInices = [0,4, 8, 12, 16, 20];
 let handPointNames = ["wrist", "thumb", "index_finger_tip", "middle_finger_tip", "ring_finger_tip", "pinky_finger_tip"];
 var features = ["Easing","Cam Opacity", "Trail Speed", "Trail Length", "Mirror"];
 let textScreen;
+let gui;
+
+// JS Object
+let params = {
+  easing: 0.3,
+  camOpacity: 150,
+  trailSpeed: 10,
+  trailLength: 50,
+  mirror: true,
+  bgColor: "#000000", // dark gray
+};
 
 class polylineWithVisibleData {
   constructor(){
@@ -37,7 +47,7 @@ class polylineWithVisibleData {
       let smoothedPoints = [];
       for (let i = 0; i < this.points.length; i++){
         smoothedPoints.push(createVector(this.points[i].x, this.points[i].y,this.points[i].z));
-        this.points[i].z -=10;
+        this.points[i].z -= params.trailSpeed;
       }
       // smooth the points, but only smooth based on the visible points
       for (let i = 1; i < this.points.length - 1; i++){
@@ -172,7 +182,23 @@ function preload() {
 }
 
 function setup() {
-  framerate(25);
+  //  easing: 0.3,
+  // camOpacity: 150,
+  // trailSpeed: 250,
+  // trailLength: 50,
+  // mirror: true,
+  // bgColor: "#000000", // dark gray
+
+  let gui = new dat.GUI();
+  gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
+  gui.add(params, "camOpacity").min(0).max(255).step(1);
+  gui.add(params, "trailSpeed").min(1).max(100).step(1);
+  gui.add(params, "trailLength").min(1).max(150).step(1);
+  gui.add(params, "mirror");
+  gui.addColor(params, "bgColor");
+
+  frameRate(25);
+
   createCanvas(640*2, 480*2, WEBGL);
   // Create the webcam video and hide it
   video = createCapture(VIDEO);
@@ -233,8 +259,8 @@ function draw() {
     }
   }
 
-  leftFingers.update(0.6);
-  rightFingers.update(0.6);
+  leftFingers.update(params.easing);
+  rightFingers.update(params.easing);
 
   // print framerate to the canvas
 
@@ -243,17 +269,20 @@ function draw() {
 
   push();
   clear();
-  background(0);
-  orbitControl();
+  background(params.bgColor);
 
   scale(1.4, 1.4, 1.4);
 
   rotateY(70);
   //translate(200, 0, -200);
   push();
+  if (params.mirror){
+    scale(-1,1,1)
+  }
   noStroke();
 
   fill(255, 0, 0, 50);
+  tint(255, params.camOpacity);
   texture(video );
   plane(video.width, video.height);
 
@@ -273,6 +302,9 @@ function draw() {
   // Draw the webcam video
   //image(video, 0, 0, width, height);
   push();
+  if (params.mirror){
+    scale(-1,1,1)
+  }
   translate(-width / 2, -height / 2, 10);
   
   pop();
