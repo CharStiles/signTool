@@ -2,23 +2,24 @@
 let handpose;
 let video;
 let hands = [];
-let lineLen = 150;
 let lines = {};
-let d = 200;
 let handPointInices = [0,4, 8, 12, 16, 20];
 let handPointNames = ["wrist", "thumb", "index_finger_tip", "middle_finger_tip", "ring_finger_tip", "pinky_finger_tip"];
-var features = ["Easing","Cam Opacity", "Trail Speed", "Trail Length", "Mirror"];
 let textScreen;
 let gui;
+let maxTrailLength = 100;
 
 // JS Object
 let params = {
   easing: 0.3,
   camOpacity: 150,
   trailSpeed: 10,
-  trailLength: 50,
+  trailLength: maxTrailLength,
   mirror: true,
   bgColor: "#000000", // dark gray
+  rotateX: -0.1, 
+  rotateY: 0.9,
+  rotateZ: 0
 };
 
 class polylineWithVisibleData {
@@ -30,8 +31,8 @@ class polylineWithVisibleData {
     this.points.push(createVector(x, y, 0));
     this.visible.push(visible);
 
-    // if we have more than 100 points, remove the first one
-    if (this.points.length > 100){
+    // if we have more than maxTrailLength points, remove the first one
+    if (this.points.length > maxTrailLength){
       this.points.shift();
       this.visible.shift();
     }
@@ -61,7 +62,7 @@ class polylineWithVisibleData {
       // set line width 
       strokeWeight(3);
 
-      for (let i = 0; i < this.points.length - 1; i++){
+      for (let i = (maxTrailLength-params.trailLength); i < this.points.length - 1; i++){
         // calculate the alpha value based on pct through the line
         let pct = i / this.points.length;
         let alpha = 255 * (1 - pct);
@@ -193,9 +194,12 @@ function setup() {
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
   gui.add(params, "camOpacity").min(0).max(255).step(1);
   gui.add(params, "trailSpeed").min(1).max(100).step(1);
-  gui.add(params, "trailLength").min(1).max(150).step(1);
+  gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
   gui.add(params, "mirror");
   gui.addColor(params, "bgColor");
+  gui.add(params, "rotateX").min(-PI).max(PI).step(0.001);
+  gui.add(params, "rotateY").min(-PI).max(PI).step(0.001);
+  gui.add(params, "rotateZ").min(-PI).max(PI).step(0.001);
 
   frameRate(25);
 
@@ -232,7 +236,7 @@ function setup() {
   // load a system font
  
   textScreen = createGraphics(400,400)
-  
+  ortho();
 
 }
 
@@ -264,16 +268,16 @@ function draw() {
 
   // print framerate to the canvas
 
-
-  //console.log(frameRate());
-
   push();
   clear();
   background(params.bgColor);
 
   scale(1.4, 1.4, 1.4);
 
-  rotateY(70);
+
+  rotateX(params.rotateX);
+  rotateY(params.rotateY);
+  rotateZ(params.rotateZ);
   //translate(200, 0, -200);
   push();
   if (params.mirror){
