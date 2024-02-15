@@ -8,6 +8,7 @@ let handPointNames = ["wrist", "thumb", "index_finger_tip", "middle_finger_tip",
 let textScreen;
 let gui;
 let maxTrailLength = 100;
+var easycam;
 
 // JS Object
 let params = {
@@ -17,11 +18,14 @@ let params = {
   trailSpeed: 10,
   trailLength: maxTrailLength,
   mirror: true,
-  rotateX: -0.1, 
-  rotateY: 0.9,
-  rotateZ: 0, 
   zoom: 1.4
 };
+
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  easycam.setViewport([0,0,windowWidth, windowHeight]);
+}
 
 class polylineWithVisibleData {
 
@@ -66,15 +70,31 @@ class polylineWithVisibleData {
       // set line width 
       strokeWeight(params.lineThickness);
 
-      for (let i = 0; i < this.points.length - 1; i++){
+      // for (let i = 0; i < this.points.length - 1; i++){
+      //   // calculate the alpha value based on pct through the line
+      //   let pct = i / this.points.length;
+      //   let alpha = 255 * (1 - pct);
+      //   stroke(255, 255,255, 255.-alpha);
+      //   if (this.visible[i] && this.visible[i+1]){
+      //     line(smoothedPoints[i].x, smoothedPoints[i].y,smoothedPoints[i].z, smoothedPoints[i+1].x, smoothedPoints[i+1].y,smoothedPoints[i+1].z);
+      //   }
+      // }
+      beginShape();
+      noFill();
+      for (let i = 0; i < this.points.length; i++){
         // calculate the alpha value based on pct through the line
         let pct = i / this.points.length;
         let alpha = 255 * (1 - pct);
-        stroke(255, 255,255, 255.-alpha);
-        if (this.visible[i] && this.visible[i+1]){
-          line(smoothedPoints[i].x, smoothedPoints[i].y,smoothedPoints[i].z, smoothedPoints[i+1].x, smoothedPoints[i+1].y,smoothedPoints[i+1].z);
+       
+        if (this.visible[i]){
+          stroke(255, 255,255, 255.-alpha);
+          vertex(smoothedPoints[i].x, smoothedPoints[i].y,smoothedPoints[i].z);
+        } else {
+          endShape();
+          beginShape();
         }
       }
+      endShape();
   }
 }
 
@@ -208,14 +228,14 @@ function setup() {
   gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
   gui.add(params, "mirror");
 
-  gui.add(params, "rotateX").min(0).max(PI).step(0.001);
-  gui.add(params, "rotateY").min(0).max(PI).step(0.001);
-  gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
+  // gui.add(params, "rotateX").min(0).max(PI).step(0.001);
+  // gui.add(params, "rotateY").min(0).max(PI).step(0.001);
+  // gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
 
   //(25);
 
-  createCanvas(640*2, 480*2, WEBGL);
+  createCanvas(windowWidth, windowHeight, WEBGL);
   // Create the webcam video and hide it
   video = createCapture(VIDEO);
   video.size(640, 480);
@@ -248,7 +268,17 @@ function setup() {
   // load a system font
  
   textScreen = createGraphics(400,400)
-  ortho(-width/2, width/2, -height/2, height/2, 0.1, 10000);
+  pixelDensity(1.0);
+	setAttributes('antialias', true);
+
+  easycam = createEasyCam({distance : 1400}); 
+  easycam.setRotationScale(0.0003);
+	console.log(easycam.INFO.toString());
+  document.oncontextmenu = function() { return false; }
+  document.onmousedown   = function() { return false; }
+  //perspective(60 * PI/180, width/height, 1, 5000);
+  
+  ortho(-width/2, width/2, -height/2, height/2, 0.1, 100000);
 
 }
 
@@ -291,15 +321,21 @@ function draw() {
   scale(params.zoom, params.zoom, params.zoom);
 
 
-  rotateX(params.rotateX);
-  rotateY(params.rotateY);
-  rotateZ(params.rotateZ);
+  // rotateX(params.rotateX);
+  // rotateY(params.rotateY);
+  // rotateZ(params.rotateZ);
   //translate(200, 0, -200);
   push();
   if (params.mirror){
     scale(-1,1,1)
   }
   noStroke();
+
+  leftFingers.drawLines();
+  rightFingers.drawLines();
+
+  noStroke();
+  
 
   fill(255, 0, 0, 50);
   tint(255, params.camOpacity);
@@ -313,22 +349,18 @@ function draw() {
   // }
 
   stroke(255);
-  leftFingers.drawLines();
-  rightFingers.drawLines();
-
+ 
 
   pop(); // return to our original coordinate system
 
   // Draw the webcam video
   //image(video, 0, 0, width, height);
+
+  pop();
+
+
   push();
-  if (params.mirror){
-    scale(-1,1,1)
-  }
-  translate(-width / 2, -height / 2, 10);
-  
-  pop();
-  pop();
+  scale(params.zoom, params.zoom, params.zoom);
 
   // clear textScreen
   textScreen.clear();
@@ -340,12 +372,13 @@ function draw() {
     string = string.substring(0, n+2);
   }
 
-  
+  // how can I get this not to be effected by the camera?
   // set font size for textScreen
   textScreen.textSize(32);
   textScreen.fill(255);
   textScreen.text("" + string, 30, 30);
-  image(textScreen, 0 - width/2,0 - height/2) 
+  image(textScreen, 0 - (video.width/2)*1.3,0 - (video.height/2)*1.3) 
+  pop();
 }
 
 
