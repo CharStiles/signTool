@@ -18,6 +18,7 @@ let params = {
   trailSpeed: 10,
   trailLength: maxTrailLength,
   mirror: true,
+  drawWrist: true,
   zoom: 1.4
 };
 
@@ -187,9 +188,8 @@ class fingerPoints {
     }
   }
   drawLines(){
-
-    // 0 is the wrist, so skip it for now
-    for (let i = 1; i < 6; i++){
+    let w = params.drawWrist ? 0 : 1;
+    for (let i = w; i < 6; i++){
       this.fingers[i].drawLine();
     }
   }
@@ -213,13 +213,6 @@ function preload() {
 }
 
 function setup() {
-  //  easing: 0.3,
-  // camOpacity: 150,
-  // trailSpeed: 250,
-  // trailLength: 50,
-  // mirror: true,
-
-
   let gui = new dat.GUI();
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
   gui.add(params, "lineThickness").min(0.1).max(4.0).step(0.01);
@@ -227,13 +220,12 @@ function setup() {
   gui.add(params, "trailSpeed").min(1).max(100).step(1);
   gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
   gui.add(params, "mirror");
+  gui.add(params, "drawWrist");
 
   // gui.add(params, "rotateX").min(0).max(PI).step(0.001);
   // gui.add(params, "rotateY").min(0).max(PI).step(0.001);
   // gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
-
-  //(25);
 
   createCanvas(windowWidth, windowHeight, WEBGL);
   // Create the webcam video and hide it
