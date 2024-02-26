@@ -20,13 +20,27 @@ let params = {
   trailLength: maxTrailLength,
   mirror: true,
   frameRate: false,
-  zoom: 1.4
+  zoom: 1.4,
+  direction:'Z-'
 };
 
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   easycam.setViewport([0,0,windowWidth, windowHeight]);
+}
+
+
+document.addEventListener("mousedown", onDocumentMouseDown); 
+
+function onDocumentMouseDown(event) {
+  // https://stackoverflow.com/a/11562933/1497139
+  var target = event.target || event.srcElement;
+  var tag = target.tagName;
+  console.log("hehekjhrkj")
+  if (tag!='CANVAS')
+    return;
+  event.preventDefault();
 }
 
 function stringsToObject(stringList) {
@@ -67,8 +81,26 @@ class polylineWithVisibleData {
       let smoothedPoints = [];
       for (let i = 0; i < this.points.length; i++){
         smoothedPoints.push(createVector(this.points[i].x, this.points[i].y,this.points[i].z));
+        // TODO figure out more efficient way to do this
+        if(params.direction == "X+"){
+          this.points[i].x += params.trailSpeed;
+        }
+        if(params.direction == "X-"){
+          this.points[i].x -= params.trailSpeed;
+        }
+        if(params.direction == "Y+"){
+          this.points[i].y += params.trailSpeed;
+        }
+        if(params.direction == "Y-"){
+          this.points[i].y -= params.trailSpeed;
+        }
+        if(params.direction == "Z+"){
+          this.points[i].z += params.trailSpeed;
+        }
+        if(params.direction == "Z-"){
         this.points[i].z -= params.trailSpeed;
       }
+    }
       // smooth the points, but only smooth based on the visible points
       for (let i = 1; i < this.points.length - 1; i++){
         if (this.visible[i] && this.visible[i+1]){
@@ -238,7 +270,7 @@ function setup() {
   // gui.add(params, "rotateY").min(0).max(PI).step(0.001);
   // gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
-
+  gui.add( params, 'direction', [ 'X+', 'X-', 'Y+', 'Y-', 'Z+', 'Z-' ] );
   createCanvas(windowWidth, windowHeight, WEBGL);
   // Create the webcam video and hide it
   video = createCapture(VIDEO);
