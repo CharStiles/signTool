@@ -14,12 +14,11 @@ var text;
 // JS Object
 let params = {
   easing: 0.3,
-  lineThickness: 3,
+  lineThickness: 5,
   camOpacity: 150,
   trailSpeed: 10,
   trailLength: maxTrailLength,
   mirror: true,
-  drawWrist: false,
   frameRate: false,
   zoom: 1.4
 };
@@ -29,6 +28,15 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   easycam.setViewport([0,0,windowWidth, windowHeight]);
 }
+
+function stringsToObject(stringList) {
+  var obj = {};
+  stringList.forEach(function(str) {
+    obj[str] = true;
+  });
+  return obj;
+}
+
 
 class polylineWithVisibleData {
 
@@ -159,12 +167,14 @@ class fingerPoints {
     for (let i = 0; i < 6; i++){
       this.fingers.push(new fingerPoint(0,0));
     }
+    this.handObj = {};
   }
 
   setup(){  
     for (let i = 0; i < 6; i++){
       this.fingers[i].setup();
     }
+    this.handObj = stringsToObject(handPointNames);
   }
 
   setMaxTrailLength(maxLength){ 
@@ -190,9 +200,10 @@ class fingerPoints {
     }
   }
   drawLines(){
-    let w = params.drawWrist ? 0 : 1;
-    for (let i = w; i < 6; i++){
+    for (let i = 0; i < 6; i++){
+      if(this.handObj[handPointNames[i]]){
       this.fingers[i].drawLine();
+      }
     }
   }
 }
@@ -218,14 +229,12 @@ function setup() {
   let gui = new dat.GUI();
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
   gui.add(params, "lineThickness").min(0.1).max(8.0).step(0.01);
-  gui.add(params, "camOpacity").min(0).max(255).step(1);
-  gui.add(params, "trailSpeed").min(1).max(100).step(1);
+  gui.add(params, "camOpacity").min(0).max(255).step(1).name("Camera Opacity");
+  gui.add(params, "trailSpeed").min(0).max(100).step(1);
   gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
   gui.add(params, "mirror");
-  gui.add(params, "drawWrist");
   gui.add(params, "frameRate");
-
-  // gui.add(params, "rotateX").min(0).max(PI).step(0.001);
+   // gui.add(params, "rotateX").min(0).max(PI).step(0.001);
   // gui.add(params, "rotateY").min(0).max(PI).step(0.001);
   // gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
@@ -258,8 +267,17 @@ function setup() {
   leftFingers.setup();
   rightFingers.setup();
 
+  //TODO: firgure out why hands seem switched?
+  var rHand = gui.addFolder('Left Hand');
+  var lHand = gui.addFolder('Right Hand');
+  for (n in handPointNames){
+    console.log(n);
+    rHand.add(rightFingers.handObj, handPointNames[n]);
+    lHand.add(leftFingers.handObj, handPointNames[n] );
+  }
+  
+
   // load a system font
- 
   textScreen = createGraphics(400,400)
   pixelDensity(1.0);
 	setAttributes('antialias', true);
