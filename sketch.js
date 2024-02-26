@@ -217,7 +217,7 @@ function preload() {
 function setup() {
   let gui = new dat.GUI();
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
-  gui.add(params, "lineThickness").min(0.1).max(4.0).step(0.01);
+  gui.add(params, "lineThickness").min(0.1).max(8.0).step(0.01);
   gui.add(params, "camOpacity").min(0).max(255).step(1);
   gui.add(params, "trailSpeed").min(1).max(100).step(1);
   gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
