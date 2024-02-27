@@ -16,12 +16,15 @@ let params = {
   easing: 0.3,
   lineThickness: 5,
   camOpacity: 150,
-  trailSpeed: 10,
+  trailSpeedX: 0,
+  trailSpeedY: 0,
+  trailSpeedZ: -30,
   trailLength: maxTrailLength,
+  drawAxis: false,
   mirror: true,
   frameRate: false,
   zoom: 1.4,
-  direction:'Z-'
+
 };
 
 
@@ -82,24 +85,9 @@ class polylineWithVisibleData {
       for (let i = 0; i < this.points.length; i++){
         smoothedPoints.push(createVector(this.points[i].x, this.points[i].y,this.points[i].z));
         // TODO figure out more efficient way to do this
-        if(params.direction == "X+"){
-          this.points[i].x += params.trailSpeed;
-        }
-        if(params.direction == "X-"){
-          this.points[i].x -= params.trailSpeed;
-        }
-        if(params.direction == "Y+"){
-          this.points[i].y += params.trailSpeed;
-        }
-        if(params.direction == "Y-"){
-          this.points[i].y -= params.trailSpeed;
-        }
-        if(params.direction == "Z+"){
-          this.points[i].z += params.trailSpeed;
-        }
-        if(params.direction == "Z-"){
-        this.points[i].z -= params.trailSpeed;
-      }
+        this.points[i].x += params.trailSpeedX/5.0;
+        this.points[i].y += params.trailSpeedY/5.0;
+        this.points[i].z += params.trailSpeedZ/5.0;
     }
       // smooth the points, but only smooth based on the visible points
       for (let i = 1; i < this.points.length - 1; i++){
@@ -262,15 +250,19 @@ function setup() {
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
   gui.add(params, "lineThickness").min(0.1).max(8.0).step(0.01);
   gui.add(params, "camOpacity").min(0).max(255).step(1).name("Camera Opacity");
-  gui.add(params, "trailSpeed").min(0).max(100).step(1);
+  gui.add(params, "trailSpeedX").min(-100).max(100).step(1);
+  gui.add(params, "trailSpeedY").min(-100).max(100).step(1);
+  gui.add(params, "trailSpeedZ").min(-100).max(100).step(1);
   gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
   gui.add(params, "mirror");
   gui.add(params, "frameRate");
+  gui.add(params, "drawAxis");
+  
    // gui.add(params, "rotateX").min(0).max(PI).step(0.001);
   // gui.add(params, "rotateY").min(0).max(PI).step(0.001);
   // gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
-  gui.add( params, 'direction', [ 'X+', 'X-', 'Y+', 'Y-', 'Z+', 'Z-' ] );
+  
   createCanvas(windowWidth, windowHeight, WEBGL);
   // Create the webcam video and hide it
   video = createCapture(VIDEO);
@@ -381,8 +373,7 @@ function draw() {
   }
   noStroke();
 
-  leftFingers.drawLines();
-  rightFingers.drawLines();
+
 
   noStroke();
   
@@ -392,6 +383,23 @@ function draw() {
   texture(video );
   plane(video.width, video.height);
 
+
+  // blend mode additive
+  blendMode(ADD);
+
+  leftFingers.drawLines();
+  rightFingers.drawLines();
+  // reset blend mode
+  blendMode(BLEND);
+
+  if (params.drawAxis){
+    stroke(255, 0, 0);
+    line(0, 0, 0, 100, 0, 0);
+    stroke(0, 255, 0);
+    line(0, 0, 0, 0, 100, 0);
+    stroke(0, 0, 255);
+    line(0, 0, 0, 0, 0, 100);
+  }
   // Draw all left fingers
   // for (i = 0; i < 5; i++){
   //   fill(255, 0, 0);
