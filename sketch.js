@@ -40,7 +40,6 @@ function onDocumentMouseDown(event) {
   // https://stackoverflow.com/a/11562933/1497139
   var target = event.target || event.srcElement;
   var tag = target.tagName;
-  console.log("hehekjhrkj")
   if (tag!='CANVAS')
     return;
   event.preventDefault();
@@ -205,13 +204,17 @@ class fingerPoints {
 
   
   updateTarget( fingerIndex, x, y){
+    if(this.handObj[handPointNames[fingerIndex]]){
     this.fingers[fingerIndex].updateTarget(x, y);
+    }
   }
   
   update(smoothing){
     for (let i = 0; i < 6; i++){
-      this.fingers[i].update(smoothing);
-    }
+      
+        this.fingers[i].update(smoothing);
+      }
+    
   }
 
   increaseFramesSinceSeen(){
@@ -221,9 +224,9 @@ class fingerPoints {
   }
   drawLines(){
     for (let i = 0; i < 6; i++){
-      if(this.handObj[handPointNames[i]]){
+      
       this.fingers[i].drawLine();
-      }
+      
     }
   }
 }
@@ -258,9 +261,7 @@ function setup() {
   gui.add(params, "frameRate");
   gui.add(params, "drawAxis");
   
-   // gui.add(params, "rotateX").min(0).max(PI).step(0.001);
-  // gui.add(params, "rotateY").min(0).max(PI).step(0.001);
-  // gui.add(params, "rotateZ").min(0).max(PI).step(0.001);
+
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
   
   createCanvas(windowWidth, windowHeight, WEBGL);
@@ -295,7 +296,6 @@ function setup() {
   var rHand = gui.addFolder('Left Hand');
   var lHand = gui.addFolder('Right Hand');
   for (n in handPointNames){
-    console.log(n);
     rHand.add(rightFingers.handObj, handPointNames[n]);
     lHand.add(leftFingers.handObj, handPointNames[n] );
   }
@@ -355,17 +355,12 @@ function draw() {
 
   // print framerate to the canvas
 
- 
-  //clear();
   background(0);
 
   push();
   scale(params.zoom, params.zoom, params.zoom);
 
 
-  // rotateX(params.rotateX);
-  // rotateY(params.rotateY);
-  // rotateZ(params.rotateZ);
   //translate(200, 0, -200);
   push();
   if (params.mirror){
