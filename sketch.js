@@ -10,6 +10,8 @@ let gui;
 let maxTrailLength = 100;
 var easycam, gl;
 var text; 
+let recordButton, playButton, liveButton;
+let recordState = 0;   // 0 = live, 1 = record, 2 = play
 
 // JS Object
 let params = {
@@ -24,6 +26,11 @@ let params = {
   mirror: true,
   frameRate: false,
   zoom: 1.4,
+  useVel: false,
+  velMin: 1,
+  velMax: 10,
+  backgroundColor: [0, 0, 0],
+  lineColor: [255, 255, 255]
 
 };
 
@@ -60,17 +67,109 @@ class polylineWithVisibleData {
   constructor(){
     this.points = [];
     this.visible = [];
+    this.velocity = [];
+
+    this.recording = false;
+
+
+    this.recordedPoints = [];
+    this.recordedVisible = [];
+    this.recordedVelocity = [];
+    
+
     this.maxLength = 100;
+
+    
   }
+
+  clearRecordedData(){
+    this.recordedPoints = [];
+    this.recordedVisible = [];
+    this.recordedVelocity = [];
+  }
+
+
   addPoint(x, y, visible){
     this.points.push(createVector(x, y, 0));
     this.visible.push(visible);
+
+    // calculate velocity
+    if (this.points.length > 1 && this.visible[this.visible.length - 1] && this.visible[this.visible.length - 2]){
+      let lastPoint = this.points[this.points.length - 2];
+      let thisPoint = this.points[this.points.length - 1];
+      let distance = p5.Vector.dist(thisPoint, lastPoint);
+
+      // get previous velocity
+      let lastVelocity = this.velocity[this.velocity.length - 1];
+      // smooth new velocity with previous velocity
+      let velocity = 0.8 * lastVelocity + 0.2 * distance;
+      this.velocity.push(velocity);
+    } else {
+      this.velocity.push(0);
+    }
 
     // if we have more than maxTrailLength points, remove the first one
     while (this.points.length > this.maxLength){
       this.points.shift();
       this.visible.shift();
+      this.velocity.shift();
     }
+
+    if (this.recording){
+      this.recordedPoints.push(createVector(x, y, 0));
+      this.recordedVisible.push(visible);
+      this.recordedVelocity.push(this.velocity[this.velocity.length - 1]);
+    }
+  }
+
+  drawRecordedData(){
+      // do something! 
+
+      //console.log("drawing recorded data " + this.recordedPoints.length);
+      if (this.recordedPoints.length == 0) return;
+
+      let smoothedPoints = [];
+      for (let i = 0; i < this.recordedPoints.length; i++){
+        smoothedPoints.push(createVector(this.recordedPoints[i].x, this.recordedPoints[i].y,this.recordedPoints[i].z));
+      }
+      // smooth the points, but only smooth based on the visible points
+      for (let i = 1; i < this.recordedPoints.length - 1; i++){
+        if (this.recordedVisible[i-1] && this.recordedVisible[i] && this.recordedVisible[i+1]){
+          smoothedPoints[i].x = (smoothedPoints[i-1].x + smoothedPoints[i].x + smoothedPoints[i+1].x) / 3;
+          smoothedPoints[i].y = (smoothedPoints[i-1].y + smoothedPoints[i].y + smoothedPoints[i+1].y) / 3;
+        }
+      }
+      strokeWeight(params.lineThickness);
+      beginShape();
+      noFill();
+      for (let i = 0; i < this.recordedPoints.length; i++){
+        // calculate the alpha value based on pct through the line
+        let pct = i / this.recordedPoints.length;
+        let origPct = pct;
+        if (params.useVel){
+            pct *= map(this.recordedVelocity[i], params.velMin, params.velMax, 0.0, 1.0, true);
+        }
+        let alpha = 255 * (1 - pct);
+
+        let scaleFactor = 1. / ( params.trailLength / max(this.recordedPoints.length, 1));
+
+        let addX = (1-origPct) * params.trailSpeedX*10.*scaleFactor;
+        let addY = (1-origPct) * params.trailSpeedY*10.*scaleFactor;
+        let addZ = (1-origPct) * params.trailSpeedZ*10.*scaleFactor;
+       
+        if (this.recordedVisible[i]){
+          //stroke(255, 255,255, 255.-alpha);
+          stroke(params.lineColor[0], params.lineColor[1], params.lineColor[2], 255.-alpha);
+          vertex(smoothedPoints[i].x + addX, smoothedPoints[i].y + addY,smoothedPoints[i].z + addZ);
+        } else {
+          endShape();
+          beginShape();
+        }
+      }
+      endShape();
+
+
+
   }
 
   draw(){
@@ -84,9 +183,9 @@ class polylineWithVisibleData {
       for (let i = 0; i < this.points.length; i++){
         smoothedPoints.push(createVector(this.points[i].x, this.points[i].y,this.points[i].z));
         // TODO figure out more efficient way to do this
-        this.points[i].x += params.trailSpeedX/5.0;
-        this.points[i].y += params.trailSpeedY/5.0;
-        this.points[i].z += params.trailSpeedZ/5.0;
+        // this.points[i].x += params.trailSpeedX/5.0;
+        // this.points[i].y += params.trailSpeedY/5.0;
+        // this.points[i].z += params.trailSpeedZ/5.0;
     }
       // smooth the points, but only smooth based on the visible points
       for (let i = 1; i < this.points.length - 1; i++){
@@ -114,11 +213,20 @@ class polylineWithVisibleData {
       for (let i = 0; i < this.points.length; i++){
         // calculate the alpha value based on pct through the line
         let pct = i / this.points.length;
+        let origPct = pct;
+        if (params.useVel){
+            pct *= map(this.velocity[i], params.velMin, params.velMax, 0.0, 1.0, true);
+        }
         let alpha = 255 * (1 - pct);
+        let addX = (1-origPct) * params.trailSpeedX*10.;
+        let addY = (1-origPct) * params.trailSpeedY*10.;
+        let addZ = (1-origPct) * params.trailSpeedZ*10.;
        
         if (this.visible[i]){
-          stroke(255, 255,255, 255.-alpha);
-          vertex(smoothedPoints[i].x, smoothedPoints[i].y,smoothedPoints[i].z);
+          //stroke(255, 255,255, 255.-alpha);
+          stroke(params.lineColor[0], params.lineColor[1], params.lineColor[2], 255.-alpha);
+
+          vertex(smoothedPoints[i].x + addX, smoothedPoints[i].y + addY,smoothedPoints[i].z + addZ);
         } else {
           endShape();
           beginShape();
@@ -136,6 +244,14 @@ class fingerPoint {
   polyline = new polylineWithVisibleData();
   target = {};
   bGotTarget = false;
+
+
+  setRecordState(bRecording){
+    this.polyline.recording = bRecording;
+    if (bRecording){
+      this.polyline.clearRecordedData();
+    }
+  }
   
   constructor(x, y){
 
@@ -177,6 +293,9 @@ class fingerPoint {
   drawLine(){
     this.polyline.draw();
   }
+  drawRecordedData(){
+    this.polyline.drawRecordedData();
+  }
 }
 
 //--------------------------------------------------------------------------------
@@ -188,6 +307,13 @@ class fingerPoints {
     }
     this.handObj = {};
   }
+
+  setRecordState(bRecording){
+    for (let i = 0; i < 6; i++){
+      this.fingers[i].setRecordState(bRecording);
+    }
+  }
+
 
   setup(){  
     for (let i = 0; i < 6; i++){
@@ -229,6 +355,12 @@ class fingerPoints {
       
     }
   }
+
+  drawRecordedData(){
+    for (let i = 0; i < 6; i++){
+      this.fingers[i].drawRecordedData();
+    }
+  }
 }
 
 leftFingers = new fingerPoints();
@@ -241,14 +373,83 @@ let fingersSmoothedRight = [];
 
 
 
-
-
 function preload() {
   // Load the handpose model.
   handpose = ml5.handpose();
 }
 
+function record() {
+  //("Recording");
+  // make recording active
+  recordState = 1;
+
+  leftFingers.setRecordState(true);
+  rightFingers.setRecordState(true);
+
+  //recordButton.style('background-color', "#00FF00");
+  
+  // why does this not work?
+  document.getElementById("recordButton").class = "recording"
+
+
+  // find button with id recordButton
+
+  console.log(document.getElementById("recordButton"));
+ // recordButton.style.backgroundColor = "red";
+
+}
+
+function play() {
+
+  leftFingers.setRecordState(false);
+  rightFingers.setRecordState(false);
+  
+
+  // remove recording classname from record button
+  document.getElementById("recordButton").class = "active"
+
+  recordState = 2;
+  console.log("Playing");
+}
+
+function live() {
+
+  leftFingers.setRecordState(false);
+  rightFingers.setRecordState(false);
+  
+
+  document.getElementById("recordButton").class = "active"
+
+  recordState = 0;
+  console.log("Live");
+}
+
 function setup() {
+
+// add three buttons to the overall webpage, for record, play, and live
+
+recordButton = createButton('Record');
+recordButton.id("recordButton");
+recordButton.position(19, 20);
+recordButton.mousePressed(record);
+liveButton = createButton('Live');
+liveButton.id("liveButton");
+liveButton.position(19, 80);
+liveButton.mousePressed(live);
+playButton = createButton('Play');
+playButton.id("playButton");
+playButton.position(19, 140);
+playButton.mousePressed(play);
+
+
+// set class of buttons
+
+
+
+
+//console.log(document.getElementById("liveButton"));
+
+
   let gui = new dat.GUI();
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
   gui.add(params, "lineThickness").min(0.1).max(8.0).step(0.01);
@@ -263,6 +464,14 @@ function setup() {
   
 
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
+  gui.add(params, "useVel");
+  gui.add(params, "velMin").min(0).max(30).step(0.1);
+  gui.add(params, "velMax").min(0).max(30).step(0.1);
+
+  // add color picker for background
+  gui.addColor(params, "backgroundColor").name("backgroundColor");
+  gui.addColor(params, "lineColor").name("lineColor");
+
   
   createCanvas(windowWidth, windowHeight, WEBGL);
   // Create the webcam video and hide it
@@ -327,6 +536,46 @@ function setup() {
 
 function draw() {
   
+
+
+  // if we are live: 
+  if (recordState == 0){ 
+    document.getElementById("recordButton").className = "active";
+    document.getElementById("liveButton").className = "disabled";
+    document.getElementById("playButton").className = "disabled";
+
+    document.getElementById("recordButton"). disabled = false;
+    document.getElementById("liveButton"). disabled = true;
+    document.getElementById("playButton"). disabled = true;
+
+   
+
+    }
+  // if we are recording: 
+  if (recordState == 1){
+    document.getElementById("recordButton").className = "recording";
+    document.getElementById("liveButton").className = "active";
+    document.getElementById("playButton").className = "active";
+
+    document.getElementById("recordButton"). disabled = true;
+    document.getElementById("liveButton"). disabled = false;
+    document.getElementById("playButton"). disabled = false;
+
+  
+  }   
+  // if we are playing:
+  if (recordState == 2){
+    document.getElementById("recordButton").className = "disabled";
+    document.getElementById("liveButton").className = "active";
+    document.getElementById("playButton").className = "playing";
+
+    document.getElementById("recordButton"). disabled = true;
+    document.getElementById("liveButton"). disabled = false;
+    document.getElementById("playButton"). disabled = false;
+
+  } 
+
+  
   // assume we have not seen the fingers 
   leftFingers.increaseFramesSinceSeen();
   rightFingers.increaseFramesSinceSeen();
@@ -355,7 +604,8 @@ function draw() {
 
   // print framerate to the canvas
 
-  background(0);
+  background(params.backgroundColor[0], params.backgroundColor[1], params.backgroundColor[2]);
+  
 
   push();
   scale(params.zoom, params.zoom, params.zoom);
@@ -375,17 +625,27 @@ function draw() {
 
   fill(255, 0, 0, 50);
   tint(255, params.camOpacity);
+
+  if (recordState != 2){
   texture(video );
   plane(video.width, video.height);
 
 
-  // blend mode additive
-  blendMode(ADD);
-
   leftFingers.drawLines();
   rightFingers.drawLines();
+} else if (recordState == 2){
+
+  leftFingers.drawRecordedData();
+  rightFingers.drawRecordedData();
+
+}
+
+
+  // blend mode additive
+  //blendMode(ADD);
+
   // reset blend mode
-  blendMode(BLEND);
+  //blendMode(BLEND);
 
   if (params.drawAxis){
     stroke(255, 0, 0);

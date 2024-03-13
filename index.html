@@ -8,16 +8,59 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.8.0/p5.js"></script>
     <script src="https://unpkg.com/ml5@0.20.0-alpha.3/dist/ml5.js"></script>
     <script src="https://freshfork.github.io/p5.EasyCam/p5.easycam.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js" integrity="sha512-WoO4Ih0CDOSLYafy22wZD/mcJ7k0ESLqtQsFa6zFKnEUrbtuGU+GkLtVhgt93xa2qewG5gKEC6CWlN8OaCTSVg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <!-- do css for no margin -->
+
+    <!-- do css for no margin, add style for button active -->
     <style>
       body {
         margin: 0;
       }
+      
+
+      button{
+        padding: 10px;
+        margin: 10px;
+        font-size: 1.5em;
+        border-radius: 6px;
+        border: none;
+        background-color: #ddd;
+        color: #000;
+      }
+
+      .recording {
+        background-color: #f00;
+        color: #fff;
+      }
+
+
+      .playing {
+        background-color: rgb(0, 255, 55);
+        color: #fff;
+        cursor: not-allowed;
+      }
+
+      #recordControls {
+        position: fixed;
+        top: 100;
+        right: 100;
+        padding: 10px;
+      }
+    
+      .disabled {
+  /* your styling here */
+  opacity: 0.3; /* example: reduce opacity to indicate disabled state */
+  cursor: not-allowed; /* example: change cursor to indicate disabled state */
+}
+      
     </style>
   </head>
   <body>
-    <script src="dat.gui.min.js"></script>
+    <!-- <script src="dat.gui.min.js"></script> -->
     <script src="sketch.js"></script>
+
+    <!-- <div id="recordControls">
+      <button id="record">record</button>
+    </div> -->
   </body>
 </html>
