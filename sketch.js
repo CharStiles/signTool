@@ -7,37 +7,44 @@ let handPointInices = [0,4, 8, 12, 16, 20];
 let handPointNames = ["wrist", "thumb", "index_finger_tip", "middle_finger_tip", "ring_finger_tip", "pinky_finger_tip"];
 let textScreen;
 let gui;
-let maxTrailLength = 100;
+
 var easycam, gl;
 var text; 
-let recordButton, playButton, liveButton;
-let recordState = 0;   // 0 = live, 1 = record, 2 = play
+var text2; 
+var recordButton;
+var exportButton;
+var clearButton;
+
+var recordState = false;
+var startRecordTime = 0;
+
+
+let svgHeader = '<?xml version="1.0" standalone="no"?>\n' +
+    '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" ' +
+    '"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n' +
+    '<svg width="640" height="480" version="1.1" xmlns="http://www.w3.org/2000/svg">\n';
+let svgFooter = '</svg>';
+
+
 
 // JS Object
 let params = {
+  countdown: 5, 
+  duration: 10, 
   easing: 0.3,
   lineThickness: 5,
   camOpacity: 150,
-  trailSpeedX: 0,
-  trailSpeedY: 0,
-  trailSpeedZ: -30,
-  trailLength: maxTrailLength,
+
   drawAxis: false,
   mirror: true,
   frameRate: false,
   zoom: 1.4,
-  useVel: false,
-  velMin: 1,
-  velMax: 10,
-  backgroundColor: [0, 0, 0],
-  lineColor: [255, 255, 255]
-
 };
 
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  easycam.setViewport([0,0,windowWidth, windowHeight]);
+ 
 }
 
 
@@ -69,12 +76,6 @@ class polylineWithVisibleData {
     this.visible = [];
     this.velocity = [];
 
-    this.recording = false;
-
-
-    this.recordedPoints = [];
-    this.recordedVisible = [];
-    this.recordedVelocity = [];
     
 
     this.maxLength = 100;
@@ -82,11 +83,6 @@ class polylineWithVisibleData {
     
   }
 
-  clearRecordedData(){
-    this.recordedPoints = [];
-    this.recordedVisible = [];
-    this.recordedVelocity = [];
-  }
 
 
   addPoint(x, y, visible){
@@ -109,70 +105,25 @@ class polylineWithVisibleData {
     }
 
     // if we have more than maxTrailLength points, remove the first one
-    while (this.points.length > this.maxLength){
-      this.points.shift();
-      this.visible.shift();
-      this.velocity.shift();
-    }
+    // while (this.points.length > this.maxLength){
+    //   this.points.shift();
+    //   this.visible.shift();
+    //   this.velocity.shift();
+    // }
 
-    if (this.recording){
-      this.recordedPoints.push(createVector(x, y, 0));
-      this.recordedVisible.push(visible);
-      this.recordedVelocity.push(this.velocity[this.velocity.length - 1]);
-    }
+  
   }
 
-  drawRecordedData(){
-      // do something! 
-
-      //console.log("drawing recorded data " + this.recordedPoints.length);
-      if (this.recordedPoints.length == 0) return;
-
-      let smoothedPoints = [];
-      for (let i = 0; i < this.recordedPoints.length; i++){
-        smoothedPoints.push(createVector(this.recordedPoints[i].x, this.recordedPoints[i].y,this.recordedPoints[i].z));
-      }
-      // smooth the points, but only smooth based on the visible points
-      for (let i = 1; i < this.recordedPoints.length - 1; i++){
-        if (this.recordedVisible[i-1] && this.recordedVisible[i] && this.recordedVisible[i+1]){
-          smoothedPoints[i].x = (smoothedPoints[i-1].x + smoothedPoints[i].x + smoothedPoints[i+1].x) / 3;
-          smoothedPoints[i].y = (smoothedPoints[i-1].y + smoothedPoints[i].y + smoothedPoints[i+1].y) / 3;
-        }
-      }
-      strokeWeight(params.lineThickness);
-      beginShape();
-      noFill();
-      for (let i = 0; i < this.recordedPoints.length; i++){
-        // calculate the alpha value based on pct through the line
-        let pct = i / this.recordedPoints.length;
-        let origPct = pct;
-        if (params.useVel){
-            pct *= map(this.recordedVelocity[i], params.velMin, params.velMax, 0.0, 1.0, true);
-        }
-        let alpha = 255 * (1 - pct);
-
-        let scaleFactor = 1. / ( params.trailLength / max(this.recordedPoints.length, 1));
-
-        let addX = (1-origPct) * params.trailSpeedX*10.*scaleFactor;
-        let addY = (1-origPct) * params.trailSpeedY*10.*scaleFactor;
-        let addZ = (1-origPct) * params.trailSpeedZ*10.*scaleFactor;
-       
-        if (this.recordedVisible[i]){
-          //stroke(255, 255,255, 255.-alpha);
-          stroke(params.lineColor[0], params.lineColor[1], params.lineColor[2], 255.-alpha);
-          vertex(smoothedPoints[i].x + addX, smoothedPoints[i].y + addY,smoothedPoints[i].z + addZ);
-        } else {
-          endShape();
-          beginShape();
-        }
-      }
-      endShape();
-
-
-
-  }
 
   draw(){
+
+
+    if (params.record){
+      bRecording = true;
+      // set the gui to not recording
+      
+    }
+
       // draw as a series of line segments
       // only draw if both points are visible
 
@@ -214,19 +165,15 @@ class polylineWithVisibleData {
         // calculate the alpha value based on pct through the line
         let pct = i / this.points.length;
         let origPct = pct;
-        if (params.useVel){
-            pct *= map(this.velocity[i], params.velMin, params.velMax, 0.0, 1.0, true);
-        }
+      
         let alpha = 255 * (1 - pct);
-        let addX = (1-origPct) * params.trailSpeedX*10.;
-        let addY = (1-origPct) * params.trailSpeedY*10.;
-        let addZ = (1-origPct) * params.trailSpeedZ*10.;
+     
        
         if (this.visible[i]){
           //stroke(255, 255,255, 255.-alpha);
-          stroke(params.lineColor[0], params.lineColor[1], params.lineColor[2], 255.-alpha);
+          stroke(255,255,255, 255.);
 
-          vertex(smoothedPoints[i].x + addX, smoothedPoints[i].y + addY,smoothedPoints[i].z + addZ);
+          vertex(smoothedPoints[i].x , smoothedPoints[i].y ,smoothedPoints[i].z );
         } else {
           endShape();
           beginShape();
@@ -246,12 +193,7 @@ class fingerPoint {
   bGotTarget = false;
 
 
-  setRecordState(bRecording){
-    this.polyline.recording = bRecording;
-    if (bRecording){
-      this.polyline.clearRecordedData();
-    }
-  }
+  
   
   constructor(x, y){
 
@@ -286,16 +228,15 @@ class fingerPoint {
       this.y = smoothing * this.y + (1-smoothing) * this.target.y;
     }
 
-    this.polyline.addPoint(this.x, this.y, this.nFramesSinceSeen < 10);
-
+    if (recordState == true && (millis() - startRecordTime) / 1000 > params.countdown){
+        this.polyline.addPoint(this.x, this.y, this.nFramesSinceSeen < 10);
+    }
   }
 
   drawLine(){
     this.polyline.draw();
   }
-  drawRecordedData(){
-    this.polyline.drawRecordedData();
-  }
+
 }
 
 //--------------------------------------------------------------------------------
@@ -308,9 +249,11 @@ class fingerPoints {
     this.handObj = {};
   }
 
-  setRecordState(bRecording){
+ 
+  clear(){
     for (let i = 0; i < 6; i++){
-      this.fingers[i].setRecordState(bRecording);
+      this.fingers[i].polyline.points = [];
+      this.fingers[i].polyline.visible = [];
     }
   }
 
@@ -322,11 +265,7 @@ class fingerPoints {
     this.handObj = stringsToObject(handPointNames);
   }
 
-  setMaxTrailLength(maxLength){ 
-    for (let i = 0; i < 6; i++){
-      this.fingers[i].polyline.maxLength = maxLength;
-    }
-  } 
+
 
   
   updateTarget( fingerIndex, x, y){
@@ -350,17 +289,11 @@ class fingerPoints {
   }
   drawLines(){
     for (let i = 0; i < 6; i++){
-      
       this.fingers[i].drawLine();
-      
     }
   }
 
-  drawRecordedData(){
-    for (let i = 0; i < 6; i++){
-      this.fingers[i].drawRecordedData();
-    }
-  }
+
 }
 
 leftFingers = new fingerPoints();
@@ -378,68 +311,199 @@ function preload() {
   handpose = ml5.handpose();
 }
 
-function record() {
-  //("Recording");
-  // make recording active
-  recordState = 1;
-
-  leftFingers.setRecordState(true);
-  rightFingers.setRecordState(true);
-
-  //recordButton.style('background-color', "#00FF00");
-  
-  // why does this not work?
-  document.getElementById("recordButton").class = "recording"
-
-
-  // find button with id recordButton
-
-  console.log(document.getElementById("recordButton"));
- // recordButton.style.backgroundColor = "red";
-
-}
-
-function play() {
-
-  leftFingers.setRecordState(false);
-  rightFingers.setRecordState(false);
-  
-
-  // remove recording classname from record button
-  document.getElementById("recordButton").class = "active"
-
-  recordState = 2;
-  console.log("Playing");
-}
-
-function live() {
-
-  leftFingers.setRecordState(false);
-  rightFingers.setRecordState(false);
-  
-
-  document.getElementById("recordButton").class = "active"
-
-  recordState = 0;
-  console.log("Live");
-}
 
 function setup() {
 
 // add three buttons to the overall webpage, for record, play, and live
-
 recordButton = createButton('Record');
-recordButton.id("recordButton");
-recordButton.position(19, 20);
-recordButton.mousePressed(record);
-liveButton = createButton('Live');
-liveButton.id("liveButton");
-liveButton.position(19, 80);
-liveButton.mousePressed(live);
-playButton = createButton('Play');
-playButton.id("playButton");
-playButton.position(19, 140);
-playButton.mousePressed(play);
+recordButton.position(50, 50);
+
+
+exportButton = createButton('Export');
+exportButton.position(50, 110);
+exportButton.style('display', 'none');
+// hide export button
+
+clearButton = createButton('Clear');
+clearButton.position(50, 170);
+clearButton.style('display', 'none');
+clearButton.mousePressed(function() {
+  leftFingers.clear();
+  rightFingers.clear();
+  exportButton.style('display', 'none');
+  clearButton.style('display', 'none');
+});
+
+exportButton.mousePressed(function() {
+  // I'd like to export the finget points to SVG here: 
+
+  
+    // create SVG object
+    var svg = "";
+    svg += svgHeader;
+
+    // make the background of the svg black
+    svg += "<rect width='100%' height='100%' fill='black'/>\n";
+
+   
+    // for (let i = 0; i < leftFingers.fingers[0].polyline.points.length; i++){
+      
+    //   if (params.mirror == true){
+    //     svg += video.width -leftFingers.fingers[0].polyline.points[i].x + "," + leftFingers.fingers[0].polyline.points[i].y + " ";
+    //   } else {
+    //      svg += leftFingers.fingers[0].polyline.points[i].x + "," + leftFingers.fingers[0].polyline.points[i].y + " ";
+    //   }
+    // }
+
+    for (index in leftFingers.fingers){
+   
+      let smoothedPoints = [];
+      let visiblePoints = [];
+      for (let i = 0; i < leftFingers.fingers[index].polyline.points.length; i++){
+        smoothedPoints.push(createVector(leftFingers.fingers[index].polyline.points[i].x, leftFingers.fingers[index].polyline.points[i].y, leftFingers.fingers[index].polyline.points[i].z));
+        visiblePoints.push(leftFingers.fingers[index].polyline.visible[i]);
+      }
+      // smooth the points, but only smooth based on the visible points
+      for (let i = 1; i < leftFingers.fingers[index].polyline.points.length - 1; i++){
+        if (leftFingers.fingers[index].polyline.visible[i-1] && 
+            leftFingers.fingers[index].polyline.visible[i] && leftFingers.fingers[index].polyline.visible[i+1]){
+          smoothedPoints[i].x = (smoothedPoints[i-1].x + smoothedPoints[i].x + smoothedPoints[i+1].x) / 3;
+          smoothedPoints[i].y = (smoothedPoints[i-1].y + smoothedPoints[i].y + smoothedPoints[i+1].y) / 3;
+        }
+      }
+      // save to SVG
+      svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+      svg += "<polyline points='";
+      let visibleCount = 0;
+      for (let i = 0; i < smoothedPoints.length; i++){
+        if (visiblePoints[i]){
+          visibleCount++;
+          if (params.mirror == true){
+            svg += (video.width - smoothedPoints[i].x -320.) + "," + (smoothedPoints[i].y +240.) + " ";
+          } else {
+            svg += (smoothedPoints[i].x+320.) + "," + (smoothedPoints[i].y+240.) + " ";
+          }
+        } else {
+          if (visibleCount > 0){
+            svg += "'/>\n";
+            svg += "</g>\n";
+            svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+            svg += "<polyline points='";
+            visibleCount = 0;
+          }
+        }
+      } 
+      svg += "'/>\n";
+      svg += "</g>\n";
+
+
+      // beginShape();
+      // noFill();
+      // for (let i = 0; i < this.points.length; i++){
+      //   // calculate the alpha value based on pct through the line
+      //   let pct = i / this.points.length;
+      //   let origPct = pct;
+      
+      //   let alpha = 255 * (1 - pct);
+     
+       
+      //   if (this.visible[i]){
+      //     //stroke(255, 255,255, 255.-alpha);
+      //     stroke(255,255,255, 255.);
+
+      //     vertex(smoothedPoints[i].x , smoothedPoints[i].y ,smoothedPoints[i].z );
+      //   } else {
+      //     endShape();
+      //     beginShape();
+      //   }
+      // }
+      // endShape();
+
+    
+    }
+
+    smoothedPoints = [];
+    for (index in rightFingers.fingers){
+     
+       visiblePoints = [];
+       smoothedPoints = [];
+      for (let i = 0; i < rightFingers.fingers[index].polyline.points.length; i++){
+        smoothedPoints.push(createVector(rightFingers.fingers[index].polyline.points[i].x, rightFingers.fingers[index].polyline.points[i].y, rightFingers.fingers[index].polyline.points[i].z));
+      
+        visiblePoints.push(rightFingers.fingers[index].polyline.visible[i]);
+      }
+      // smooth the points, but only smooth based on the visible points
+      for (let i = 1; i < rightFingers.fingers[index].polyline.points.length - 1; i++){
+        if (rightFingers.fingers[index].polyline.visible[i] && rightFingers.fingers[index].polyline.visible[i] && rightFingers.fingers[index].polyline.visible[i+1]){
+          smoothedPoints[i].x = (smoothedPoints[i-1].x + smoothedPoints[i].x + smoothedPoints[i+1].x) / 3;
+          smoothedPoints[i].y = (smoothedPoints[i-1].y + smoothedPoints[i].y + smoothedPoints[i+1].y) / 3;
+        }
+      }
+      // save to SVG
+      svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+      svg += "<polyline points='";
+      let visibleCount = 0;
+      for (let i = 0; i < smoothedPoints.length; i++){
+        if (visiblePoints[i]){
+          visibleCount++;
+          if (params.mirror == true){
+            svg += (video.width - smoothedPoints[i].x -320.) + "," + (smoothedPoints[i].y +240.) + " ";
+          } else {
+            svg += (smoothedPoints[i].x+320.) + "," + (smoothedPoints[i].y+240.) + " ";
+          }
+        } else {
+          if (visibleCount > 0){
+            svg += "'/>\n";
+            svg += "</g>\n";
+            svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+            svg += "<polyline points='";
+            visibleCount = 0;
+          }
+        }
+      } 
+      svg += "'/>\n";
+      svg += "</g>\n";
+
+
+    }
+
+    
+    svg += svgFooter;
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(svg));
+    let timestampstring = new Date().toISOString().replace(/:/g, "-");
+    element.setAttribute('download', timestampstring + '.svg');
+    //element.setAttribute('download', 'fingers.svg');
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  
+});
+
+
+recordButton.mousePressed(function() {
+  recordState = true;
+  startRecordTime = millis();
+
+  // clear the finger points
+
+  leftFingers.clear();
+  rightFingers.clear();
+
+  clearButton.style('display', 'none');
+  exportButton.style('display', 'none');
+
+
+  //alert("Recording...");
+
+  // params.record = !params.record;
+  // if (params.record){
+  //   recordButton.html('Stop Recording');
+  // } else {
+  //   recordButton.html('Record');
+  // }
+});
 
 
 // set class of buttons
@@ -451,28 +515,19 @@ playButton.mousePressed(play);
 
 
   let gui = new dat.GUI();
+  gui.add(params, "countdown").min(0.01).max(20.0).step(0.1);
+  gui.add(params, "duration").min(0.01).max(30.0).step(0.1);
+
   gui.add(params, "easing").min(0.01).max(1.0).step(0.01);
   gui.add(params, "lineThickness").min(0.1).max(8.0).step(0.01);
   gui.add(params, "camOpacity").min(0).max(255).step(1).name("Camera Opacity");
-  gui.add(params, "trailSpeedX").min(-100).max(100).step(1);
-  gui.add(params, "trailSpeedY").min(-100).max(100).step(1);
-  gui.add(params, "trailSpeedZ").min(-100).max(100).step(1);
-  gui.add(params, "trailLength").min(1).max(maxTrailLength).step(1);
+
   gui.add(params, "mirror");
   gui.add(params, "frameRate");
-  gui.add(params, "drawAxis");
-  
+
 
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
-  gui.add(params, "useVel");
-  gui.add(params, "velMin").min(0).max(30).step(0.1);
-  gui.add(params, "velMax").min(0).max(30).step(0.1);
 
-  // add color picker for background
-  gui.addColor(params, "backgroundColor").name("backgroundColor");
-  gui.addColor(params, "lineColor").name("lineColor");
-
-  
   createCanvas(windowWidth, windowHeight, WEBGL);
   // Create the webcam video and hide it
   video = createCapture(VIDEO);
@@ -515,9 +570,6 @@ playButton.mousePressed(play);
   pixelDensity(1.0);
 	setAttributes('antialias', true);
 
-  easycam = createEasyCam({distance : 1400}); 
-  easycam.setRotationScale(0.0003);
-	console.log(easycam.INFO.toString());
   
   document.oncontextmenu = function() { return false; }
   document.onmousedown   = function() { return false; }
@@ -526,11 +578,18 @@ playButton.mousePressed(play);
   ortho(-width/2, width/2, -height/2, height/2, 0.1, 100000);
 
   text = createDiv('Frame Rate');
-  text.position(50, 50);
+  text.position(200, 80);
   text.style("font-family", "monospace");
   text.style("color", "#FFFFFF");
   text.style("font-size", "18pt");
   text.style("padding", "10px");
+
+  text2 = createDiv('');
+  text2.position(200, 50);
+  text2.style("font-family", "monospace");
+  text2.style("color", "#FFFFFF");
+  text2.style("font-size", "18pt");
+  text2.style("padding", "10px");
 }
 
 
@@ -538,50 +597,10 @@ function draw() {
   
 
 
-  // if we are live: 
-  if (recordState == 0){ 
-    document.getElementById("recordButton").className = "active";
-    document.getElementById("liveButton").className = "disabled";
-    document.getElementById("playButton").className = "disabled";
-
-    document.getElementById("recordButton"). disabled = false;
-    document.getElementById("liveButton"). disabled = true;
-    document.getElementById("playButton"). disabled = true;
-
-   
-
-    }
-  // if we are recording: 
-  if (recordState == 1){
-    document.getElementById("recordButton").className = "recording";
-    document.getElementById("liveButton").className = "active";
-    document.getElementById("playButton").className = "active";
-
-    document.getElementById("recordButton"). disabled = true;
-    document.getElementById("liveButton"). disabled = false;
-    document.getElementById("playButton"). disabled = false;
-
-  
-  }   
-  // if we are playing:
-  if (recordState == 2){
-    document.getElementById("recordButton").className = "disabled";
-    document.getElementById("liveButton").className = "active";
-    document.getElementById("playButton").className = "playing";
-
-    document.getElementById("recordButton"). disabled = true;
-    document.getElementById("liveButton"). disabled = false;
-    document.getElementById("playButton"). disabled = false;
-
-  } 
-
   
   // assume we have not seen the fingers 
   leftFingers.increaseFramesSinceSeen();
   rightFingers.increaseFramesSinceSeen();
-
-  leftFingers.setMaxTrailLength(params.trailLength);
-  rightFingers.setMaxTrailLength(params.trailLength);
 
   
   for (i = 0; i < hands.length; i++){
@@ -604,7 +623,7 @@ function draw() {
 
   // print framerate to the canvas
 
-  background(params.backgroundColor[0], params.backgroundColor[1], params.backgroundColor[2]);
+  background(0,0,0);
   
 
   push();
@@ -626,19 +645,14 @@ function draw() {
   fill(255, 0, 0, 50);
   tint(255, params.camOpacity);
 
-  if (recordState != 2){
+
   texture(video );
   plane(video.width, video.height);
 
 
   leftFingers.drawLines();
   rightFingers.drawLines();
-} else if (recordState == 2){
 
-  leftFingers.drawRecordedData();
-  rightFingers.drawRecordedData();
-
-}
 
 
   // blend mode additive
@@ -647,14 +661,7 @@ function draw() {
   // reset blend mode
   //blendMode(BLEND);
 
-  if (params.drawAxis){
-    stroke(255, 0, 0);
-    line(0, 0, 0, 100, 0, 0);
-    stroke(0, 255, 0);
-    line(0, 0, 0, 0, 100, 0);
-    stroke(0, 0, 255);
-    line(0, 0, 0, 0, 0, 100);
-  }
+
   // Draw all left fingers
   // for (i = 0; i < 5; i++){
   //   fill(255, 0, 0);
@@ -673,13 +680,45 @@ function draw() {
 
 if(!params.frameRate){
   text.html("")
-  return;
+  //return;
+  
+}
+
+if (recordState == true){
+  text2.html("Recording...")
+
+
+  // check the time 
+  let currentTime = millis();
+  let elapsedTime = (currentTime - startRecordTime) / 1000;
+  if (elapsedTime > params.duration + params.countdown && recordState == true){
+     recordState = false;
+    
+     // make export visible 
+    exportButton.style('display', 'block');
+
+     clearButton.style('display', 'block');
+    //text2.html("Recording Complete")
+  }
+
+  if (elapsedTime < params.countdown){
+    text2.html("Recording in " + (params.countdown - elapsedTime).toFixed(2) + " seconds")
+  }
+
+  if (elapsedTime > params.countdown && elapsedTime < params.duration + params.countdown){
+   var pctRecorded = (elapsedTime - params.countdown) / params.duration;
+   text2.html("Recording... " + (pctRecorded*100.).toFixed(1) + "%");
+   // text2.html("Recording... " + (elapsedTime - params.countdown).toFixed(2) + " of " + params.duration.toFixed(2) + "seconds")
+  }
+
+
+} else {
+  text2.html("");
 }
   push();
   scale(params.zoom, params.zoom, params.zoom);
 
-  // clear textScreen
-  textScreen.clear();
+  
 
   let string = "" + frameRate();
   let n = string.indexOf(".");
@@ -687,7 +726,10 @@ if(!params.frameRate){
     string = string.substring(0, n+2);
   }
   //draw element over canvas
-  text.html(string)
+
+  if(params.frameRate){
+    text.html(string)
+  }
   pop();
   
 }
