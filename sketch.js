@@ -372,29 +372,116 @@ exportButton.mousePressed(function() {
         }
       }
       // save to SVG
-      svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
-      svg += "<polyline points='";
+      // svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+      // svg += "<polyline ";
+      // let dataname = "finger" + index;
+      // let datastartframe = 0;
+      // svg += "data-name='" + dataname + "' ";
+      // svg += "data-startframe='" + datastartframe + "' ";
+      // svg += " points='";
       let visibleCount = 0;
+      let ptsCount = 0;
+      var ptsString = "";
+      let startframe = 0;
+      let endframe = 0;
       for (let i = 0; i < smoothedPoints.length; i++){
         if (visiblePoints[i]){
+          if (visibleCount == 0){
+            startframe = i;
+          }
           visibleCount++;
           if (params.mirror == true){
-            svg += (video.width - smoothedPoints[i].x -320.) + "," + (smoothedPoints[i].y +240.) + " ";
+            ptsString += (video.width - smoothedPoints[i].x -320.) + "," + (smoothedPoints[i].y +240.) + " ";
           } else {
-            svg += (smoothedPoints[i].x+320.) + "," + (smoothedPoints[i].y+240.) + " ";
+            ptsString += (smoothedPoints[i].x+320.) + "," + (smoothedPoints[i].y+240.) + " ";
           }
+          endframe = i;
+          ptsCount++;
+          visibleCount++;
         } else {
           if (visibleCount > 0){
-            svg += "'/>\n";
-            svg += "</g>\n";
-            svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
-            svg += "<polyline points='";
+
+            // save SVG
+
+            if (ptsCount > 2){
+              let dataname = "finger" + index;
+              let svgdataend = "data-endframe='" + endframe + "' ";
+              let svgdatastart = "data-startframe='" + startframe + "' ";
+              let svghand = "data-hand='left' ";
+              let svgfinger = "data-finger='" + index + "' ";
+              svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+              svg += "<polyline " + svgdatastart + svgdataend + svghand + svgfinger + " points='" + ptsString + "'/>\n";
+              svg += "</g>\n";
+            }
+            
+            ptsCount = 0;
+            ptsString = "";
             visibleCount = 0;
           }
         }
       } 
-      svg += "'/>\n";
+
+      if (ptsCount > 2){
+        let dataname = "finger" + index;
+        let svgdataend = "data-endframe='" + endframe + "' ";
+        let svgdatastart = "data-startframe='" + startframe + "' ";
+        let svghand = "data-hand='left' ";
+        let svgfinger = "data-finger='" + index + "' ";
+        svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+        svg += "<polyline " + svgdatastart + svgdataend + svghand + svgfinger + " points='" + ptsString + "'/>\n";
+        svg += "</g>\n";
+      }
+
+      
+
+      /*
+
+      let visibleCount = 0;
+      let ptsCount = 0;
+    
+
+
+      for (let i = 0; i < smoothedPoints.length; i++){
+        if (visiblePoints[i]){
+
+          if (visibleCount == 0){
+            svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+            svg += "<polyline ";
+            let dataname = "finger" + index;
+            let datastartframe = i;
+            svg += "data-name='" + dataname + "' ";
+            svg += "data-startframe='" + datastartframe + "' ";
+            var ptsString = " points='";
+          }
+          visibleCount++;
+          if (params.mirror == true){
+            ptsString += (video.width - smoothedPoints[i].x -320.) + "," + (smoothedPoints[i].y +240.);
+          } else {
+            ptsString += (smoothedPoints[i].x+320.) + "," + (smoothedPoints[i].y+240.);
+          }
+        } else {
+          if (visibleCount > 0){
+            let dataendframe = i;
+            let svgdataend = "data-endframe='" + dataendframe + "' ";
+            ptsString += "'";
+            svg += svgdataend + " " + ptsString + "/>\n";
+            //svg += "'/>\n";
+            ptsString = " points='";
+            svg += "</g>\n";
+            svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+            visibleCount = 0;
+          }
+        }
+      } 
+
+      if (visibleCount > 0){
+      let dataendframe = smoothedPoints.length - 1;
+      let svgdataend = "data-endframe='" + dataendframe + "' ";
+      ptsString += "'";
+      svg += svgdataend + " " + ptsString + "/>\n";
       svg += "</g>\n";
+      }
+      */
 
 
       // beginShape();
@@ -439,30 +526,59 @@ exportButton.mousePressed(function() {
           smoothedPoints[i].y = (smoothedPoints[i-1].y + smoothedPoints[i].y + smoothedPoints[i+1].y) / 3;
         }
       }
-      // save to SVG
-      svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
-      svg += "<polyline points='";
       let visibleCount = 0;
+      let ptsCount = 0;
+      var ptsString = "";
+      let startframe = 0;
+      let endframe = 0;
       for (let i = 0; i < smoothedPoints.length; i++){
         if (visiblePoints[i]){
+          if (visibleCount == 0){
+            startframe = i;
+          }
           visibleCount++;
           if (params.mirror == true){
-            svg += (video.width - smoothedPoints[i].x -320.) + "," + (smoothedPoints[i].y +240.) + " ";
+            ptsString += (video.width - smoothedPoints[i].x -320.) + "," + (smoothedPoints[i].y +240.) + " ";
           } else {
-            svg += (smoothedPoints[i].x+320.) + "," + (smoothedPoints[i].y+240.) + " ";
+            ptsString += (smoothedPoints[i].x+320.) + "," + (smoothedPoints[i].y+240.) + " ";
           }
+          endframe = i;
+          ptsCount++;
+          visibleCount++;
         } else {
           if (visibleCount > 0){
-            svg += "'/>\n";
-            svg += "</g>\n";
-            svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
-            svg += "<polyline points='";
+
+            // save SVG
+
+            if (ptsCount > 2){
+              let dataname = "finger" + index;
+              let svgdataend = "data-endframe='" + endframe + "' ";
+              let svgdatastart = "data-startframe='" + startframe + "' ";
+              let svghand = "data-hand='right' ";
+              let svgfinger = "data-finger='" + index + "' ";
+              svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+              svg += "<polyline " + svgdatastart + svgdataend + svghand + svgfinger + " points='" + ptsString + "'/>\n";
+              svg += "</g>\n";
+            }
+            
+            ptsCount = 0;
+            ptsString = "";
             visibleCount = 0;
           }
         }
       } 
-      svg += "'/>\n";
-      svg += "</g>\n";
+
+      if (ptsCount > 2){
+        let dataname = "finger" + index;
+        let svgdataend = "data-endframe='" + endframe + "' ";
+        let svgdatastart = "data-startframe='" + startframe + "' ";
+        let svghand = "data-hand='right' ";
+        let svgfinger = "data-finger='" + index + "' ";
+        svg += "<g stroke='white' stroke-width='1' fill='none'>\n";
+        svg += "<polyline " + svgdatastart + svgdataend + svghand + svgfinger + " points='" + ptsString + "'/>\n";
+        svg += "</g>\n";
+      }
+
 
 
     }
