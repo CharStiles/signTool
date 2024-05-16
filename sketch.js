@@ -29,6 +29,7 @@ let svgFooter = '</svg>';
 
 // JS Object
 let params = {
+  debugView:false,
   countdown: 5, 
   duration: 10, 
   easing: 0.3,
@@ -39,6 +40,7 @@ let params = {
   mirror: true,
   frameRate: false,
   zoom: 1.4,
+  distThresh:40
 };
 
 
@@ -161,6 +163,7 @@ class polylineWithVisibleData {
       // }
       beginShape();
       noFill();
+      let distance=0
       for (let i = 0; i < this.points.length; i++){
         // calculate the alpha value based on pct through the line
         let pct = i / this.points.length;
@@ -168,8 +171,10 @@ class polylineWithVisibleData {
       
         let alpha = 255 * (1 - pct);
      
-       
-        if (this.visible[i]){
+       if (distance>params.distThresh){
+         this.visible[i] = false;
+       } 
+        if (this.visible[i] ){
           //stroke(255, 255,255, 255.-alpha);
           stroke(255,255,255, 255.);
 
@@ -178,6 +183,12 @@ class polylineWithVisibleData {
           endShape();
           beginShape();
         }
+        if (i!= this.points.length-1){
+          distance = dist(smoothedPoints[i].x , smoothedPoints[i].y,smoothedPoints[i+1].x , smoothedPoints[i+1].y)
+        }else{
+          distance = 0;
+        }
+        
       }
       endShape();
   }
@@ -236,6 +247,11 @@ class fingerPoint {
   drawLine(){
     this.polyline.draw();
   }
+  drawDot(){
+    if (this.nFramesSinceSeen < 5 && params.debugView){
+      ellipse(this.x, this.y,5)
+    }
+  }
 
 }
 
@@ -290,6 +306,11 @@ class fingerPoints {
   drawLines(){
     for (let i = 0; i < 6; i++){
       this.fingers[i].drawLine();
+    }
+  }
+  drawDebug(){
+    for(let i = 0 ;i<6; i++){
+      this.fingers[i].drawDot();
     }
   }
 
@@ -631,6 +652,7 @@ recordButton.mousePressed(function() {
 
 
   let gui = new dat.GUI();
+  gui.add(params, "debugView");
   gui.add(params, "countdown").min(0.01).max(20.0).step(0.1);
   gui.add(params, "duration").min(0.01).max(30.0).step(0.1);
 
@@ -641,7 +663,7 @@ recordButton.mousePressed(function() {
   gui.add(params, "mirror");
   gui.add(params, "frameRate");
 
-
+ gui.add(params, "distThresh").min(0.0).max(100.0).step(1.0);
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
 
   createCanvas(windowWidth, windowHeight, WEBGL);
@@ -718,21 +740,7 @@ function draw() {
   leftFingers.increaseFramesSinceSeen();
   rightFingers.increaseFramesSinceSeen();
 
-  
-  for (i = 0; i < hands.length; i++){
-    if (hands[i].handedness == "Left"){
-      for (j = 0; j < 6; j++){
-        leftFingers.updateTarget(j, hands[i].keypoints[handPointInices[j]].x-video.width/2, 
-        hands[i].keypoints[handPointInices[j]].y-video.height/2); 
-      }
-    }
-    if (hands[i].handedness == "Right"){
-      for (j = 0; j < 6; j++){
-        rightFingers.updateTarget(j, hands[i].keypoints[handPointInices[j]].x-video.width/2, 
-        hands[i].keypoints[handPointInices[j]].y-video.height/2);
-      }
-    }
-  }
+
 
   leftFingers.update(params.easing);
   rightFingers.update(params.easing);
@@ -754,10 +762,6 @@ function draw() {
   noStroke();
 
 
-
-  noStroke();
-  
-
   fill(255, 0, 0, 50);
   tint(255, params.camOpacity);
 
@@ -765,11 +769,34 @@ function draw() {
   texture(video );
   plane(video.width, video.height);
 
-
+  
+  for (i = 0; i < hands.length; i++){
+    if (hands[i].handedness == "Left"){
+      for (j = 0; j < 6; j++){
+        leftFingers.updateTarget(j, hands[i].keypoints[handPointInices[j]].x-video.width/2, 
+        hands[i].keypoints[handPointInices[j]].y-video.height/2); 
+             }
+    }
+    if (hands[i].handedness == "Right"){
+      for (j = 0; j < 6; j++){
+        rightFingers.updateTarget(j, hands[i].keypoints[handPointInices[j]].x-video.width/2, 
+        hands[i].keypoints[handPointInices[j]].y-video.height/2);
+        
+           }
+    }
+  }
+  
   leftFingers.drawLines();
   rightFingers.drawLines();
 
+  
+  noStroke()
 
+       stroke("red")
+       leftFingers.drawDebug(); 
+
+       stroke("blue")
+       rightFingers.drawDebug(); 
 
   // blend mode additive
   //blendMode(ADD);
@@ -778,11 +805,6 @@ function draw() {
   //blendMode(BLEND);
 
 
-  // Draw all left fingers
-  // for (i = 0; i < 5; i++){
-  //   fill(255, 0, 0);
-  //   ellipse(leftFingers.fingers[i].x, leftFingers.fingers[i].y, 10, 10);
-  // }
 
   stroke(255);
  
@@ -818,18 +840,19 @@ if (recordState == true){
   }
 
   if (elapsedTime < params.countdown){
-    text2.html("Recording in " + (params.countdown - elapsedTime).toFixed(2) + " seconds")
+    text2.html("Recording in " + (params.countdown - elapsedTime).toFixed(1) + " seconds")
   }
 
   if (elapsedTime > params.countdown && elapsedTime < params.duration + params.countdown){
    var pctRecorded = (elapsedTime - params.countdown) / params.duration;
-   text2.html("Recording... " + (pctRecorded*100.).toFixed(1) + "%");
+   text2.html("Recording... " + (pctRecorded*100.).toFixed(0) + "%");
    // text2.html("Recording... " + (elapsedTime - params.countdown).toFixed(2) + " of " + params.duration.toFixed(2) + "seconds")
   }
 
 
 } else {
   text2.html("");
+  
 }
   push();
   scale(params.zoom, params.zoom, params.zoom);
