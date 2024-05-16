@@ -40,7 +40,9 @@ let params = {
   mirror: true,
   frameRate: false,
   zoom: 1.4,
+  distThreshOn:true,
   distThresh:40
+  
 };
 
 
@@ -90,13 +92,16 @@ class polylineWithVisibleData {
   addPoint(x, y, visible){
     this.points.push(createVector(x, y, 0));
     this.visible.push(visible);
-
+    
     // calculate velocity
     if (this.points.length > 1 && this.visible[this.visible.length - 1] && this.visible[this.visible.length - 2]){
       let lastPoint = this.points[this.points.length - 2];
       let thisPoint = this.points[this.points.length - 1];
       let distance = p5.Vector.dist(thisPoint, lastPoint);
-
+      if(distance > params.distThresh && params.distThreshOn){
+        this.visible[this.visible.length-1] = false
+      }
+      
       // get previous velocity
       let lastVelocity = this.velocity[this.velocity.length - 1];
       // smooth new velocity with previous velocity
@@ -163,17 +168,14 @@ class polylineWithVisibleData {
       // }
       beginShape();
       noFill();
-      let distance=0
+     
       for (let i = 0; i < this.points.length; i++){
         // calculate the alpha value based on pct through the line
         let pct = i / this.points.length;
         let origPct = pct;
       
         let alpha = 255 * (1 - pct);
-     
-       if (distance>params.distThresh){
-         this.visible[i] = false;
-       } 
+   
         if (this.visible[i] ){
           //stroke(255, 255,255, 255.-alpha);
           stroke(255,255,255, 255.);
@@ -183,11 +185,7 @@ class polylineWithVisibleData {
           endShape();
           beginShape();
         }
-        if (i!= this.points.length-1){
-          distance = dist(smoothedPoints[i].x , smoothedPoints[i].y,smoothedPoints[i+1].x , smoothedPoints[i+1].y)
-        }else{
-          distance = 0;
-        }
+  
         
       }
       endShape();
@@ -662,7 +660,7 @@ recordButton.mousePressed(function() {
 
   gui.add(params, "mirror");
   gui.add(params, "frameRate");
-
+gui.add(params, "distThreshOn");
  gui.add(params, "distThresh").min(0.0).max(100.0).step(1.0);
   gui.add(params, "zoom").min(0.1).max(2).step(0.001);
 
